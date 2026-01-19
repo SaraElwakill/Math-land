@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Master Guide</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:ital,wght@1,400&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .serif {
+            font-family: 'Merriweather', serif;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- Icon Components (Inline SVGs for reliability) ---
+        const IconBase = ({ children, color = "currentColor", size = 24, className = "" }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke={color} 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const BookOpen = (props) => (
+            <IconBase {...props}>
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </IconBase>
+        );
+
+        const AlertTriangle = (props) => (
+            <IconBase {...props}>
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+            </IconBase>
+        );
+
+        const CheckCircle = (props) => (
+            <IconBase {...props}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+            </IconBase>
+        );
+
+        const Users = (props) => (
+            <IconBase {...props}>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </IconBase>
+        );
+
+        const XIcon = (props) => (
+            <IconBase {...props}>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </IconBase>
+        );
+
+        const Divide = (props) => (
+            <IconBase {...props}>
+                <circle cx="12" cy="6" r="1" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <circle cx="12" cy="18" r="1" />
+            </IconBase>
+        );
+
+        const ArrowRight = (props) => (
+            <IconBase {...props}>
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+            </IconBase>
+        );
+
+        const Star = (props) => (
+            <IconBase {...props}>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </IconBase>
+        );
+
+        const GraduationCap = (props) => (
+            <IconBase {...props}>
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </IconBase>
+        );
+
+        // --- Main Application Component ---
+        const MathGuide = () => {
+            const [activeTab, setActiveTab] = useState('guide');
+            const [score, setScore] = useState(0);
+            const [showResults, setShowResults] = useState(false);
+            const [answers, setAnswers] = useState({});
+
+            const quizQuestions = [
+                {
+                    id: 1,
+                    question: "If two lines have the same gradient but different y-intercepts, they are...",
+                    options: ["Perpendicular", "Parallel", "Coincident"],
+                    correct: "Parallel"
+                },
+                {
+                    id: 2,
+                    question: "What is the product of the gradients of two perpendicular lines?",
+                    options: ["1", "0", "-1"],
+                    correct: "-1"
+                },
+                {
+                    id: 3,
+                    question: "Can you assume the y-intercept is 5 just because a line passes through (2, 5)?",
+                    options: ["Yes, always", "No, never assume", "Only if the line is flat"],
+                    correct: "No, never assume"
+                },
+                {
+                    id: 4,
+                    question: "To find the midpoint, you add the coordinates and divide by...",
+                    options: ["2", "4", "The gradient"],
+                    correct: "2"
+                }
+            ];
+
+            const handleQuizSubmit = () => {
+                let newScore = 0;
+                quizQuestions.forEach(q => {
+                    if (answers[q.id] === q.correct) newScore++;
+                });
+                setScore(newScore);
+                setShowResults(true);
+            };
+
+            const handleOptionSelect = (qId, option) => {
+                setAnswers(prev => ({ ...prev, [qId]: option }));
+                setShowResults(false);
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+                    <div className="max-w-4xl mx-auto">
+                        
+                        {/* Header */}
+                        <header className="text-center mb-10">
+                            <div className="inline-block p-3 bg-indigo-100 rounded-full mb-4 shadow-sm">
+                                <GraduationCap size={40} className="text-indigo-600" />
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-extrabold text-indigo-900 mb-2">Lines & Midpoints Guide</h1>
+                            <p className="text-lg text-slate-600">Mastering the maze of coordinate geometry! 🌟</p>
+                        </header>
+
+                        {/* Navigation Tabs */}
+                        <div className="flex justify-center mb-8">
+                            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex">
+                                <button
+                                    onClick={() => setActiveTab('guide')}
+                                    className={`px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                                        activeTab === 'guide' 
+                                            ? 'bg-indigo-600 text-white shadow-md' 
+                                            : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <BookOpen size={18} /> Study Guide
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('quiz')}
+                                    className={`px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                                        activeTab === 'quiz' 
+                                            ? 'bg-indigo-600 text-white shadow-md' 
+                                            : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <CheckCircle size={18} /> Quick Quiz
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* STUDY GUIDE CONTENT */}
+                        {activeTab === 'guide' && (
+                            <div className="grid md:grid-cols-2 gap-6 animate-fade-in">
+                                
+                                {/* Card 1: Parallel Lines */}
+                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-3 bg-blue-100 rounded-lg text-blue-600">
+                                            <Users size={24} />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-800">Parallel Lines</h2>
+                                    </div>
+                                    <p className="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">The "Best Friends" 👯‍♀️</p>
+                                    <p className="text-slate-600 mb-4">Like best friends walking side-by-side, they go in the exact same direction and <strong>never intersect</strong>.</p>
+                                    <ul className="space-y-2 bg-blue-50/50 p-4 rounded-xl">
+                                        <li className="flex items-start gap-2 text-sm text-slate-700">
+                                            <span className="font-bold text-blue-600">Secret:</span>
+                                            <span>Same gradient (<em className="serif">m</em>).</span>
+                                        </li>
+                                        <li className="flex items-start gap-2 text-sm text-slate-700">
+                                            <span className="font-bold text-blue-600">Difference:</span>
+                                            <span>Different y-intercepts (<em className="serif">c</em>).</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* Card 2: Perpendicular Lines */}
+                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-3 bg-purple-100 rounded-lg text-purple-600">
+                                            <XIcon size={24} />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-800">Perpendicular Lines</h2>
+                                    </div>
+                                    <p className="text-sm font-semibold text-purple-600 uppercase tracking-wide mb-2">The "Perfect Cross" ➕</p>
+                                    <p className="text-slate-600 mb-4">They meet at a perfect <strong>90° right angle</strong>.</p>
+                                    <ul className="space-y-2 bg-purple-50/50 p-4 rounded-xl">
+                                        <li className="flex items-start gap-2 text-sm text-slate-700">
+                                            <span className="font-bold text-purple-600">Secret:</span>
+                                            <span>Negative reciprocals. Product is <strong>-1</strong>.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2 text-sm text-slate-700">
+                                            <span className="font-bold text-purple-600">Example:</span>
+                                            <span>If <em className="serif">m</em> = 3, then perpendicular <em className="serif">m</em> = -1/3.</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* Card 3: The Intercept Trap */}
+                                <div className="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-amber-400 hover:shadow-md transition-shadow md:col-span-2">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-3 bg-amber-100 rounded-lg text-amber-600">
+                                            <AlertTriangle size={24} />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-800">The "Intercept Trap"</h2>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-6">
+                                        <div className="flex-1">
+                                            <p className="text-slate-600 mb-3">Don't get sleepy! 😴 You <strong>cannot</strong> simply look at a point like (2, 11) and assume the y-intercept is 11.</p>
+                                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                                                <p className="font-bold text-amber-800 mb-1">The Golden Rule:</p>
+                                                <p className="text-amber-900 text-sm">You can only "pick" the y-coordinate as your intercept if the <strong>x-coordinate is 0</strong> (e.g., (0, 3)).</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 flex flex-col justify-center bg-slate-100 rounded-xl p-4">
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-2">How to solve correctly</p>
+                                            <p className="font-mono text-sm text-slate-600">
+                                                1. Write <span className="text-indigo-600">y = mx + c</span><br/>
+                                                2. Plug in x and y<br/>
+                                                3. Solve for c
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Card 4: Midpoints */}
+                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100 hover:shadow-md transition-shadow md:col-span-2">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-3 bg-emerald-100 rounded-lg text-emerald-600">
+                                            <Divide size={24} />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-800">Midpoints</h2>
+                                    </div>
+                                    <p className="text-sm font-semibold text-emerald-600 uppercase tracking-wide mb-2">Meeting in the Middle 🤝</p>
+                                    
+                                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                                        <div>
+                                        <p className="text-slate-600 mb-4">The point that divides a line segment into <strong>two equal parts</strong>. It's the "average" of the coordinates.</p>
+                                        <ol className="list-decimal list-inside space-y-1 text-slate-700 text-sm pl-2">
+                                            <li>Add x-coordinates, then halve.</li>
+                                            <li>Add y-coordinates, then halve.</li>
+                                        </ol>
+                                        </div>
+                                        <div className="bg-emerald-50 rounded-xl p-6 text-center border border-emerald-100">
+                                            <p className="text-xs text-emerald-500 font-bold uppercase mb-2">The Formula</p>
+                                            <div className="text-2xl font-serif text-emerald-800">
+                                                M = (<span className="inline-flex flex-col align-middle text-sm mx-1 border-b border-emerald-800 pb-1">x<sub>1</sub> + x<sub>2</sub></span>
+                                                <span className="text-xs">2</span>, 
+                                                <span className="inline-flex flex-col align-middle text-sm mx-1 border-b border-emerald-800 pb-1">y<sub>1</sub> + y<sub>2</sub></span>
+                                                <span className="text-xs">2</span>)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* QUIZ CONTENT */}
+                        {activeTab === 'quiz' && (
+                            <div className="max-w-2xl mx-auto animate-fade-in">
+                                {quizQuestions.map((q) => (
+                                    <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-4">
+                                        <p className="font-semibold text-lg text-slate-800 mb-4">{q.question}</p>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {q.options.map((opt) => (
+                                                <button
+                                                    key={opt}
+                                                    onClick={() => handleOptionSelect(q.id, opt)}
+                                                    disabled={showResults}
+                                                    className={`text-left px-4 py-3 rounded-xl border transition-all flex justify-between items-center ${
+                                                        showResults
+                                                            ? opt === q.correct
+                                                                ? 'bg-green-100 border-green-300 text-green-800'
+                                                                : answers[q.id] === opt
+                                                                    ? 'bg-red-50 border-red-200 text-red-800'
+                                                                    : 'bg-slate-50 border-slate-100 opacity-60'
+                                                            : answers[q.id] === opt
+                                                                ? 'bg-indigo-50 border-indigo-400 text-indigo-900'
+                                                                : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <span>{opt}</span>
+                                                    {showResults && opt === q.correct && <CheckCircle size={18} className="text-green-600" />}
+                                                    {showResults && answers[q.id] === opt && opt !== q.correct && <XIcon size={18} className="text-red-500" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <div className="mt-8 flex flex-col items-center">
+                                    {!showResults ? (
+                                        <button
+                                            onClick={handleQuizSubmit}
+                                            disabled={Object.keys(answers).length < quizQuestions.length}
+                                            className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            Check Answers
+                                        </button>
+                                    ) : (
+                                        <div className="text-center animate-fade-in">
+                                            <div className="inline-block p-4 bg-yellow-100 rounded-full mb-4">
+                                                <Star size={32} className="text-yellow-600 fill-current" />
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-slate-800 mb-2">
+                                                You scored {score} / {quizQuestions.length}
+                                            </h3>
+                                            <p className="text-slate-600 mb-6">
+                                                {score === quizQuestions.length ? "Perfect score! You're a geometry genius! 🏆" : "Great effort! Keep practicing those intercepts! 💪"}
+                                            </p>
+                                            <button
+                                                onClick={() => {
+                                                    setAnswers({});
+                                                    setShowResults(false);
+                                                    setScore(0);
+                                                }}
+                                                className="text-indigo-600 font-semibold hover:text-indigo-800 flex items-center gap-2 mx-auto"
+                                            >
+                                                Try Again <ArrowRight size={16} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <footer className="text-center mt-12 text-slate-400 text-sm">
+                            Keep questioning what you see and keep practicing! 📈✨
+                        </footer>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MathGuide />);
+    </script>
+</body>
+</html>
+
