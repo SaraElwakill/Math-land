@@ -35,7 +35,45 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
+<h2>Google Sheets + GitHub Pages</h2>
+  
+  <div id="data-container">Loading data...</div>
 
+  <hr>
+  <input type="text" id="name" placeholder="Name">
+  <input type="text" id="msg" placeholder="Message">
+  <button onclick="sendData()">Send to Sheet</button>
+
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbypzB2JxB-7wEsAr17WbrcH6LDXeRpaVh2I0x6RjhyymzUIFirGNx13I8AHWK2mzPvm/exec";
+
+    // READ Data
+    async function getData() {
+      const response = await fetch(WEB_APP_URL);
+      const data = await response.json();
+      document.getElementById('data-container').innerHTML = 
+        data.map(item => `<p>${item.Name}: ${item.Message}</p>`).join('');
+    }
+
+    // WRITE Data
+    async function sendData() {
+      const payload = {
+        name: document.getElementById('name').value,
+        message: document.getElementById('msg').value
+      };
+
+      await fetch(WEB_APP_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Apps Script requires this for simple POSTs
+        body: JSON.stringify(payload)
+      });
+      
+      alert("Sent! Refreshing...");
+      setTimeout(getData, 2000);
+    }
+
+    getData();
+  </script>
     <script type="text/babel">
         const { useState } = React;
 
