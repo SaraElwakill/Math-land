@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <select id="sheetSelector" onchange="getData()">
+  <option value="Physics">Physics</option>
+  <option value="Chemistry">Chemistry</option>
+  <option value="Biology">Biology</option>
+</select>
+
+<div id="data-container">Loading subjects...</div>
+
+<hr>
+<h3>Add IGCSE Topic</h3>
+<input type="number" id="stage" placeholder="Stage (1-12)">
+<input type="text" id="topic" placeholder="Topic Name">
+<select id="status">
+  <option value="Not Started">Not Started</option>
+  <option value="In Progress">In Progress</option>
+  <option value="Completed">Completed</option>
+</select>
+<button onclick="sendData()">Add to Tracker</button>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxnvM1-SuXIWOnVLKibuJo5tKngbb-IqhNTaWE0xkhhlOnyYxKC6QlO-HbDcLZFsVF3/exec";
+
+  async function getData() {
+    const selectedSheet = document.getElementById('sheetSelector').value;
+    // We add the sheet name to the URL as a query parameter
+    const response = await fetch(`${WEB_APP_URL}?sheet=${selectedSheet}`);
+    const data = await response.json();
+    
+    document.getElementById('data-container').innerHTML = data.map(item => `
+      <div style="border-bottom: 1px solid #ccc; padding: 5px;">
+        <strong>Stage ${item.Stage}:</strong> ${item.Topic} 
+        <span style="color: blue;">[${item.Status}]</span>
+      </div>
+    `).join('');
+  }
+
+  async function sendData() {
+    const payload = {
+      sheet: document.getElementById('sheetSelector').value,
+      stage: document.getElementById('stage').value,
+      topic: document.getElementById('topic').value,
+      status: document.getElementById('status').value
+    };
+
+    await fetch(WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+
+    alert("Topic added!");
+    setTimeout(getData, 2000);
+  }
+
+  getData(); // Initial load
+</script>
+</body>
+</html>
