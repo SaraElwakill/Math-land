@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>3D Interactive Nets Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { font-family: 'Cairo', sans-serif; transition: background-color 0.3s; display: flex; flex-direction: column; }
+        .grid-cell { transition: all 0.2s; }
+        .grid-cell.active { background-color: #3b82f6; border-color: #2563eb; transform: scale(0.95); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .grid-cell:hover:not(.active) { background-color: #374151; }
+        canvas { outline: none; }
+        
+        /* Language Toggle */
+        body.en .ar-only { display: none !important; }
+        body.ar .en-only { display: none !important; }
+        
+        /* Tabs */
+        .tab-btn.active { border-bottom: 2px solid #3b82f6; color: #60a5fa; }
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; }
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none; background: transparent; width: 100%;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+            background: #3b82f6; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer; background: #4b5563; border-radius: 3px;
+        }
+        input[type=range]:focus { outline: none; }
+        
+        /* Responsive Layout */
+        #grid-container { display: grid; gap: 0.25rem; }
+        
+        header { flex-shrink: 0; }
+        main { flex: 1; overflow-y: auto; overflow-x: hidden; width: 100%; }
+        
+        /* Prevent scrollbars from causing layout shift */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 ar">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-lg border-b border-gray-700 flex-shrink-0">
+        <div class="w-full px-2 sm:px-4 py-2 sm:py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-4">
+            <div class="min-w-0">
+                <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-blue-400 ar-only truncate">🧊 مختبر الشبكات التفاعلي</h1>
+                <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-blue-400 en-only truncate">🧊 Interactive Nets Lab</h1>
+            </div>
+            
+            <div class="flex items-center gap-1 sm:gap-4 flex-shrink-0">
+                <nav class="flex gap-1 sm:gap-4">
+                    <button onclick="switchTab('lab')" id="tab-lab" class="tab-btn active font-bold py-2 px-2 sm:px-3 text-sm sm:text-base hover:text-blue-300 transition">
+                        <span class="ar-only">🧪 المختبر (تحكم يدوي)</span>
+                        <span class="en-only">🧪 3D Lab (Manual)</span>
+                    </button>
+                    <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn font-bold py-2 px-2 sm:px-3 text-sm sm:text-base hover:text-blue-300 transition">
+                        <span class="ar-only">📚 القواعد</span>
+                        <span class="en-only">📚 Rules</span>
+                    </button>
+                </nav>
+                <button onclick="toggleLanguage()" class="bg-gray-700 hover:bg-gray-600 px-2 sm:px-4 py-2 rounded-lg font-bold shadow transition border border-gray-600 text-sm sm:text-base flex-shrink-0">
+                    <span class="ar-only hidden sm:inline">🌐 En</span>
+                    <span class="en-only hidden sm:inline">🌐 Ar</span>
+                    <span class="ar-only sm:hidden">🌐</span>
+                    <span class="en-only sm:hidden">🌐</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full flex flex-col overflow-hidden">
+
+        <!-- ================= TAB 1: 3D LAB ================= -->
+        <section id="content-lab" class="tab-content active h-full flex-col md:flex-row gap-2 sm:gap-4 md:gap-6 p-2 sm:p-4 flex-1 overflow-hidden">
+            
+            <!-- Left Panel: Grid -->
+            <div class="w-full md:w-auto lg:w-1/4 bg-gray-800 p-3 sm:p-5 rounded-lg sm:rounded-2xl shadow-xl flex flex-col border border-gray-700 flex-shrink-0 overflow-y-auto max-h-full md:max-h-full">
+                <h2 class="text-sm sm:text-lg font-bold mb-3 sm:mb-4 text-gray-200 flex-shrink-0">
+                    <span class="ar-only">1. ارسم الشبكة (6 مربعات)</span>
+                    <span class="en-only">1. Draw Net (6 Squares)</span>
+                </h2>
+                
+                <div id="grid-container" class="bg-gray-700 p-2 rounded-lg mx-auto w-fit flex-shrink-0"></div>
+
+                <div class="flex flex-col gap-2 sm:gap-3 w-full mt-3 sm:mt-4 flex-shrink-0">
+                    <button id="btn-test" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 sm:py-3 px-3 sm:px-4 rounded-lg transition shadow-lg shadow-blue-500/30 text-sm sm:text-base">
+                        <span class="ar-only">🚀 بناء الـ 3D</span>
+                        <span class="en-only">🚀 Build 3D</span>
+                    </button>
+                    <button id="btn-clear" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-2 sm:px-4 rounded-lg transition shadow-lg shadow-red-500/30 text-sm sm:text-base">
+                        <span class="ar-only">🗑️ مسح</span>
+                        <span class="en-only">🗑️ Clear</span>
+                    </button>
+                </div>
+
+                <div class="mt-4 sm:mt-6 w-full overflow-y-auto flex-1 min-h-0">
+                    <p class="text-xs sm:text-sm text-gray-400 mb-2 font-bold border-b border-gray-600 pb-1 flex-shrink-0">
+                        <span class="ar-only">أمثلة جاهزة للتجربة:</span>
+                        <span class="en-only">Quick Templates:</span>
+                    </p>
+                    <div class="flex flex-col gap-1 sm:gap-2 mt-2">
+                        <button onclick="loadTemplate('cross')" class="text-right text-xs sm:text-sm bg-gray-700 hover:bg-gray-600 px-2 sm:px-3 py-1 sm:py-2 rounded flex justify-between flex-shrink-0">
+                            <span class="ar-only">✅ شكل الصليب (صحيح)</span>
+                            <span class="en-only">✅ Cross Shape (Valid)</span>
+                        </button>
+                        <button onclick="loadTemplate('stairs')" class="text-right text-xs sm:text-sm bg-gray-700 hover:bg-gray-600 px-2 sm:px-3 py-1 sm:py-2 rounded flex justify-between flex-shrink-0">
+                            <span class="ar-only">✅ السلم (صحيح)</span>
+                            <span class="en-only">✅ Stairs Shape (Valid)</span>
+                        </button>
+                        <button onclick="loadTemplate('invalid2x2')" class="text-right text-xs sm:text-sm bg-gray-700 hover:bg-gray-600 px-2 sm:px-3 py-1 sm:py-2 rounded flex justify-between border border-red-800 flex-shrink-0">
+                            <span class="ar-only">❌ شكل به 2x2 (خطأ)</span>
+                            <span class="en-only">❌ Has 2x2 block (Invalid)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: 3D Preview & Controls -->
+            <div class="flex-1 bg-gray-800 rounded-lg sm:rounded-2xl shadow-xl flex flex-col border border-gray-700 overflow-hidden relative min-h-64 md:min-h-0">
+                
+                <!-- Status Message -->
+                <div id="status-panel" class="absolute top-0 left-0 w-full p-2 sm:p-4 z-10 text-center transition-all duration-300 transform -translate-y-full opacity-0 pointer-events-none">
+                    <div id="status-box" class="py-2 px-3 sm:px-4 rounded-lg shadow-lg font-bold inline-block max-w-[90%] text-xs sm:text-sm">Message</div>
+                </div>
+
+                <div id="instruction-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                    <p class="text-gray-500 text-base sm:text-lg font-bold animate-pulse text-center px-4">
+                        <span class="ar-only">الـ 3D هنا<br><span class="text-xs sm:text-sm">ارسم ثم اضغط بناء</span></span>
+                        <span class="en-only">3D Here<br><span class="text-xs sm:text-sm">Draw & click Build</span></span>
+                    </p>
+                </div>
+
+                <!-- 3D Canvas -->
+                <div id="canvas-container" class="flex-1 w-full h-full cursor-grab active:cursor-grabbing"></div>
+                
+                <!-- Interactive Fold Controls (Hidden initially) -->
+                <div id="fold-controls" class="absolute bottom-2 sm:bottom-6 left-1/2 transform -translate-x-1/2 w-[95%] sm:w-11/12 max-w-sm bg-gray-900/90 backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-600 flex flex-col gap-2 sm:gap-3 transition-opacity opacity-0 pointer-events-none z-20">
+                    <div class="flex justify-between items-center px-1 text-xs sm:text-sm">
+                        <span class="font-bold text-gray-300">
+                            <span class="ar-only">مُسطح ⬜</span><span class="en-only">Flat ⬜</span>
+                        </span>
+                        <span class="font-bold text-blue-400">
+                            <span class="ar-only">مكعب 🧊</span><span class="en-only">Cube 🧊</span>
+                        </span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <button id="btn-autoplay" class="bg-gray-700 hover:bg-gray-600 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition shadow flex-shrink-0 text-sm sm:text-base">
+                            ▶️
+                        </button>
+                        <input type="range" id="slider-fold" min="0" max="100" value="0" class="flex-1">
+                        <div id="txt-percentage" class="text-white font-mono font-bold w-8 sm:w-10 text-center flex-shrink-0 text-xs sm:text-sm">0%</div>
+                    </div>
+                    
+                    <div class="text-center text-xs text-gray-400 mt-1">
+                        <span class="ar-only">اسحب الشريط</span>
+                        <span class="en-only">Drag slider</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: GUIDE ================= -->
+        <section id="content-guide" class="tab-content py-4 sm:py-6 px-2 sm:px-4 flex-col overflow-y-auto">
+            <!-- Content here remains same as previous guide, keeping it simple for code length -->
+            <div class="mb-6 sm:mb-8 text-center max-w-3xl mx-auto">
+                <h2 class="text-xl sm:text-3xl font-bold text-blue-400 mb-2 sm:mb-4">
+                    <span class="ar-only">كيف تختار الشبكة (Net) الصحيحة؟</span>
+                    <span class="en-only">How to identify the correct Net?</span>
+                </h2>
+                <p class="text-gray-400 text-sm sm:text-base">
+                    <span class="ar-only">قواعد سريعة لفحص الشبكة بمجرد النظر.</span>
+                    <span class="en-only">Quick rules to verify any net visually.</span>
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div class="bg-gray-800 p-4 sm:p-6 rounded-lg sm:rounded-xl border border-gray-700">
+                    <h3 class="text-lg sm:text-2xl font-bold text-white mb-2">🧊 <span class="ar-only">المكعب</span><span class="en-only">Cube</span></h3>
+                    <ul class="space-y-1 sm:space-y-2 text-gray-300 text-sm sm:text-base list-disc list-inside">
+                        <li><span class="ar-only">6 مربعات متطابقة.</span><span class="en-only">6 identical squares.</span></li>
+                        <li><span class="ar-only">ممنوع تجمّع 4 مربعات كـ (2x2).</span><span class="en-only">No 2x2 square blocks.</span></li>
+                        <li><span class="ar-only">أقصى طول لخط مستقيم هو 4 مربعات.</span><span class="en-only">Max 4 squares in a straight line.</span></li>
+                    </ul>
+                </div>
+                <div class="bg-gray-800 p-4 sm:p-6 rounded-lg sm:rounded-xl border border-gray-700">
+                    <h3 class="text-lg sm:text-2xl font-bold text-white mb-2">🧱 <span class="ar-only">متوازي المستطيلات</span><span class="en-only">Cuboid</span></h3>
+                    <ul class="space-y-1 sm:space-y-2 text-gray-300 text-sm sm:text-base list-disc list-inside">
+                        <li><span class="ar-only">كل وجهين متقابلين متطابقان ولا يتلامسان في الشبكة.</span><span class="en-only">Opposite faces match but never touch in the net.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- 1. Globalization & Setup ---
+        const i18n = {
+            ar: {
+                errCount: (c) => `غلط ❌: المكعب لازم يتكون من 6 أوجه! إنت راسم ${c}.`,
+                err2x2: 'غلط ❌: في 4 مربعات متجمعين في شكل 2x2. الأوجه هتركب فوق بعض! اسحب الشريط وشوف التداخل.',
+                errLine: 'غلط ❌: مينفعش ترص 5 مربعات أو أكتر في خط مستقيم! اسحب الشريط وشوف.',
+                errConn: 'غلط ❌: المربعات لازم تكون متصلة ببعضها!',
+                errOverlap: 'غلط ❌: الشبكة غير صحيحة، في أجزاء هتركب وتخبط في بعض. (اسحب الشريط للمعاينة)',
+                success: 'عاش! شبكة صحيحة 100% ✅ اسحب الشريط لتكوين المكعب.'
+            },
+            en: {
+                errCount: (c) => `Error ❌: Cube needs exactly 6 faces! You drew ${c}.`,
+                err2x2: 'Error ❌: Found a 2x2 block. Faces will overlap! Use slider to see.',
+                errLine: 'Error ❌: 5+ squares in a line will overlap! Use slider to see.',
+                errConn: 'Error ❌: All faces must be connected!',
+                errOverlap: 'Error ❌: Invalid net. Faces will collide. (Use slider to inspect)',
+                success: 'Perfect! 100% Valid ✅ Use slider to fold into a cube.'
+            }
+        };
+
+        let currentLang = 'ar';
+        function toggleLanguage() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            document.body.className = `bg-gray-900 text-gray-100 min-h-screen flex flex-col ${currentLang}`;
+            document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = currentLang;
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active', 'border-b-2', 'border-blue-500'));
+            document.getElementById(`content-${tabId}`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active', 'border-b-2', 'border-blue-500');
+            if(tabId === 'lab') setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        }
+
+        // --- 2. Grid UI Logic ---
+        const gridSize = 6;
+        let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+        const gridContainer = document.getElementById('grid-container');
+        gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, minmax(0, 1fr))`;
+
+        // Responsive grid cell sizing
+        function updateGridCellSize() {
+            const cells = document.querySelectorAll('.grid-cell');
+            const isMobile = window.innerWidth < 768;
+            const size = isMobile ? 'w-9 h-9' : 'w-10 h-10';
+            cells.forEach(cell => {
+                cell.className = `grid-cell ${size} border border-gray-600 rounded cursor-pointer bg-gray-800`;
+            });
+        }
+
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const cell = document.createElement('div');
+                const size = window.innerWidth < 768 ? 'w-9 h-9' : 'w-10 h-10';
+                cell.className = `grid-cell ${size} border border-gray-600 rounded cursor-pointer bg-gray-800`;
+                cell.dataset.r = r; cell.dataset.c = c;
+                cell.addEventListener('click', toggleCell);
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        function toggleCell(e) {
+            const r = parseInt(e.target.dataset.r); const c = parseInt(e.target.dataset.c);
+            grid[r][c] = grid[r][c] === 1 ? 0 : 1;
+            e.target.classList.toggle('active');
+            hide3DControls();
+        }
+
+        function clearGrid() {
+            grid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+            document.querySelectorAll('.grid-cell').forEach(cell => cell.classList.remove('active'));
+            hide3DControls();
+            reset3DView();
+        }
+        document.getElementById('btn-clear').addEventListener('click', clearGrid);
+
+        window.loadTemplate = function(name) {
+            clearGrid();
+            const tmpl = {
+                cross: [[0,1,0,0],[1,1,1,1],[0,1,0,0]],
+                stairs: [[1,1,0,0],[0,1,1,0],[0,0,1,1]],
+                invalid2x2: [[1,1,0,0],[1,1,1,0],[0,0,1,0]]
+            }[name];
+            const sr = Math.floor((gridSize - tmpl.length)/2), sc = Math.floor((gridSize - tmpl[0].length)/2);
+            for(let i=0; i<tmpl.length; i++) {
+                for(let j=0; j<tmpl[i].length; j++) {
+                    if(tmpl[i][j] === 1) {
+                        grid[sr+i][sc+j] = 1;
+                        document.querySelector(`.grid-cell[data-r="${sr+i}"][data-c="${sc+j}"]`).classList.add('active');
+                    }
+                }
+            }
+        }
+
+        // --- 3. Three.js Setup & Interactive Fold Logic ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, -3, 7); 
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        let facesGroup = new THREE.Group();
+        scene.add(facesGroup);
+        
+        let activeFaces = []; // Stores { mesh, foldAxis, foldDir, depth }
+        let treeMaxDepth = 0;
+        
+        // Control state
+        const sliderFold = document.getElementById('slider-fold');
+        const txtPercentage = document.getElementById('txt-percentage');
+        let isAutoPlaying = false;
+        let autoPlayDir = 1;
+
+        window.addEventListener('resize', () => {
+            if(container.clientWidth === 0) return;
+            updateGridCellSize();
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        function createFace(color) {
+            const group = new THREE.Group(); 
+            const geometry = new THREE.BoxGeometry(1, 1, 0.04);
+            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.1, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 })));
+            group.add(mesh); group.userData.mesh = mesh;
+            return group;
+        }
+
+        function reset3DView() {
+            scene.remove(facesGroup);
+            facesGroup = new THREE.Group();
+            scene.add(facesGroup);
+            activeFaces = [];
+            treeMaxDepth = 0;
+            sliderFold.value = 0;
+            txtPercentage.innerText = "0%";
+            isAutoPlaying = false;
+            document.getElementById('instruction-overlay').style.opacity = '1';
+            hideStatus();
+        }
+
+        function show3DControls() {
+            const ctrl = document.getElementById('fold-controls');
+            ctrl.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function hide3DControls() {
+            const ctrl = document.getElementById('fold-controls');
+            ctrl.classList.add('opacity-0', 'pointer-events-none');
+            isAutoPlaying = false;
+        }
+
+        // Apply fold based on progress (0 to 1) sequentially by depth
+        function applyFolds(progress) {
+            if(activeFaces.length === 0 || treeMaxDepth === 0) return;
+            
+            activeFaces.forEach(f => {
+                let d = f.userData.depth;
+                // Calculate when this depth should start and end folding
+                let start = (d - 1) / treeMaxDepth;
+                let end = d / treeMaxDepth;
+                
+                // Map global progress to local progress for this face
+                let localP = (progress - start) / (end - start);
+                if(localP < 0) localP = 0;
+                if(localP > 1) localP = 1;
+
+                // Easing for smooth fold
+                let ease = localP < 0.5 ? 2 * localP * localP : -1 + (4 - 2 * localP) * localP;
+
+                f.rotation[f.userData.foldAxis] = (Math.PI / 2) * f.userData.foldDir * ease;
+            });
+            facesGroup.updateMatrixWorld(true);
+        }
+
+        // Slider Event
+        sliderFold.addEventListener('input', (e) => {
+            isAutoPlaying = false; // user took control
+            document.getElementById('btn-autoplay').innerText = '▶️';
+            const val = parseInt(e.target.value);
+            txtPercentage.innerText = val + '%';
+            applyFolds(val / 100);
+        });
+
+        // AutoPlay Event
+        document.getElementById('btn-autoplay').addEventListener('click', (e) => {
+            isAutoPlaying = !isAutoPlaying;
+            if(isAutoPlaying) {
+                e.target.innerText = '⏸️';
+                if(parseInt(sliderFold.value) >= 100) autoPlayDir = -1;
+                else if(parseInt(sliderFold.value) <= 0) autoPlayDir = 1;
+            } else {
+                e.target.innerText = '▶️';
+            }
+        });
+
+        // Validation & Builder Trigger
+        document.getElementById('btn-test').addEventListener('click', () => {
+            reset3DView();
+            document.getElementById('instruction-overlay').style.opacity = '0';
+
+            let cells = [];
+            for(let r=0; r<gridSize; r++) {
+                for(let c=0; c<gridSize; c++) {
+                    if(grid[r][c] === 1) cells.push({r, c});
+                }
+            }
+
+            if (cells.length !== 6) {
+                showStatus(i18n[currentLang].errCount(cells.length), 'error');
+                return; // don't show 3d for wrong count
+            }
+
+            // Connectivity Check
+            let visited = new Set(); let q = [cells[0]];
+            visited.add(`${cells[0].r},${cells[0].c}`);
+            while(q.length > 0) {
+                let curr = q.shift();
+                [[-1,0], [1,0], [0,-1], [0,1]].forEach(d => {
+                    let nr = curr.r + d[0], nc = curr.c + d[1];
+                    let key = `${nr},${nc}`;
+                    if(nr>=0 && nr<gridSize && nc>=0 && nc<gridSize && grid[nr][nc]===1 && !visited.has(key)) {
+                        visited.add(key); q.push({r: nr, c: nc});
+                    }
+                });
+            }
+            if (visited.size !== 6) {
+                showStatus(i18n[currentLang].errConn, 'error');
+                return;
+            }
+
+            // Build 3D Tree
+            build3DTree(cells[0]);
+            
+            // Check overlaps for status message
+            let statusObj = detectErrors(cells);
+            showStatus(statusObj.msg, statusObj.type);
+            
+            show3DControls();
+            
+            // Auto start unfold/fold animation
+            setTimeout(() => {
+                isAutoPlaying = true;
+                autoPlayDir = 1;
+                document.getElementById('btn-autoplay').innerText = '⏸️';
+            }, 500);
+        });
+
+        function detectErrors(cells) {
+            // Check 2x2
+            for (let r=0; r<gridSize-1; r++) {
+                for (let c=0; c<gridSize-1; c++) {
+                    if (grid[r][c]+grid[r+1][c]+grid[r][c+1]+grid[r+1][c+1] === 4) return {msg: i18n[currentLang].err2x2, type: 'error'};
+                }
+            }
+            // Check straight line 5
+            for (let i=0; i<gridSize; i++) {
+                let rSum = 0, cSum = 0;
+                for (let j=0; j<gridSize; j++) { rSum+=grid[i][j]; cSum+=grid[j][i]; }
+                if(rSum>4 || cSum>4) return {msg: i18n[currentLang].errLine, type: 'error'};
+            }
+
+            // Check spatial overlap (Fold fully instantly to test, then reset)
+            applyFolds(1.0);
+            let positions = [];
+            facesGroup.children[0].userData.mesh.getWorldPosition(new THREE.Vector3());
+            positions.push(facesGroup.children[0].userData.mesh.getWorldPosition(new THREE.Vector3()));
+            activeFaces.forEach(f => {
+                positions.push(f.userData.mesh.getWorldPosition(new THREE.Vector3()));
+            });
+            applyFolds(0.0); // Reset
+
+            for(let i=0; i<positions.length; i++) {
+                for(let j=i+1; j<positions.length; j++) {
+                    if (positions[i].distanceTo(positions[j]) < 0.1) {
+                        return {msg: i18n[currentLang].errOverlap, type: 'error'};
+                    }
+                }
+            }
+            return {msg: i18n[currentLang].success, type: 'success'};
+        }
+
+        function build3DTree(rootCell) {
+            let rootFace = createFace(0x2563eb);
+            facesGroup.add(rootFace);
+            activeFaces = [];
+            treeMaxDepth = 0;
+            
+            let visited3D = new Set([`${rootCell.r},${rootCell.c}`]);
+
+            function attachChildren(parentFace, r, c, currentDepth) {
+                const dirs = [
+                    {dr: -1, dc: 0, type: 'up'}, {dr: 1, dc: 0, type: 'down'},
+                    {dr: 0, dc: -1, type: 'left'}, {dr: 0, dc: 1, type: 'right'}
+                ];
+
+                for(let d of dirs) {
+                    let nr = r + d.dr, nc = c + d.dc;
+                    let key = `${nr},${nc}`;
+                    if (nr>=0 && nr<gridSize && nc>=0 && nc<gridSize && grid[nr][nc]===1 && !visited3D.has(key)) {
+                        visited3D.add(key);
+                        let nextDepth = currentDepth + 1;
+                        treeMaxDepth = Math.max(treeMaxDepth, nextDepth);
+                        
+                        // Alternate colors by depth for cool effect
+                        let colors = [0x3b82f6, 0x60a5fa, 0x93c5fd, 0xbfdbfe];
+                        let childFace = createFace(colors[(nextDepth-1) % colors.length]);
+
+                        if (d.type === 'right') { 
+                            childFace.position.set(0.5, 0, 0); childFace.userData.mesh.position.set(0.5, 0, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'y', foldDir: 1, depth: nextDepth };
+                        } else if (d.type === 'left') { 
+                            childFace.position.set(-0.5, 0, 0); childFace.userData.mesh.position.set(-0.5, 0, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'y', foldDir: -1, depth: nextDepth };
+                        } else if (d.type === 'up') { 
+                            childFace.position.set(0, 0.5, 0); childFace.userData.mesh.position.set(0, 0.5, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'x', foldDir: -1, depth: nextDepth };
+                        } else if (d.type === 'down') { 
+                            childFace.position.set(0, -0.5, 0); childFace.userData.mesh.position.set(0, -0.5, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'x', foldDir: 1, depth: nextDepth };
+                        }
+
+                        parentFace.userData.mesh.add(childFace); 
+                        activeFaces.push(childFace);
+                        
+                        attachChildren(childFace, nr, nc, nextDepth);
+                    }
+                }
+            }
+
+            attachChildren(rootFace, rootCell.r, rootCell.c, 0);
+            
+            camera.position.set(0, 0, 8);
+            camera.lookAt(0,0,0);
+            controls.target.set(0,0,0);
+        }
+
+        function showStatus(msg, type) {
+            const panel = document.getElementById('status-panel');
+            const box = document.getElementById('status-box');
+            box.innerText = msg;
+            box.className = `py-3 px-6 rounded-lg shadow-2xl font-bold border-2 ${type === 'error' ? 'bg-red-600/90 border-red-400 text-white' : 'bg-green-600/90 border-green-400 text-white'} backdrop-blur-md inline-block max-w-[90%]`;
+            panel.classList.remove('-translate-y-full', 'opacity-0');
+        }
+
+        function hideStatus() {
+            document.getElementById('status-panel').classList.add('-translate-y-full', 'opacity-0');
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (isAutoPlaying) {
+                let val = parseFloat(sliderFold.value);
+                val += 0.8 * autoPlayDir; // Speed multiplier
+                
+                if (val >= 100) { val = 100; isAutoPlaying = false; document.getElementById('btn-autoplay').innerText = '▶️'; }
+                if (val <= 0) { val = 0; isAutoPlaying = false; document.getElementById('btn-autoplay').innerText = '▶️'; }
+                
+                sliderFold.value = val;
+                txtPercentage.innerText = Math.round(val) + '%';
+                applyFolds(val / 100);
+            }
+
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

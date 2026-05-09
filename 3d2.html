@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dima's 3D Magic Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+        
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background-color: #fff0f5; 
+        }
+        
+        .grid-cell { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .grid-cell.active { 
+            background-color: #f472b6; 
+            border-color: #ec4899; 
+            transform: scale(0.9); 
+            box-shadow: 0 4px 10px rgba(244, 114, 182, 0.5); 
+            border-radius: 12px;
+        }
+        .grid-cell:hover:not(.active) { background-color: #fce7f3; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 28px; width: 28px; border-radius: 50%; 
+            background: #a855f7; cursor: pointer; margin-top: -10px; 
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.6); border: 3px solid white;
+        }
+        input[type=range]::-webkit-slider-runnable-track { 
+            width: 100%; height: 10px; cursor: pointer; 
+            background: #e2e8f0; border-radius: 5px; 
+        }
+        input[type=range]:focus { outline: none; }
+        
+        canvas { outline: none; border-radius: 1rem; }
+        ::selection { background-color: #f9a8d4; color: #1f2937; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800 pb-12">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-pink-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gradient-to-tr from-pink-300 to-purple-300 rounded-full flex items-center justify-center text-2xl shadow-md border-2 border-white">
+                    👧🏻
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold text-gray-800 flex items-center gap-2">
+                        Dima's 3D Magic Lab <i data-lucide="sparkles" class="w-5 h-5 text-pink-400"></i>
+                    </h1>
+                    <p class="text-xs md:text-sm text-gray-500 font-bold">Draw, Fold, and Play!</p>
+                </div>
+            </div>
+            <a href="#guide" class="hidden md:flex items-center gap-2 text-purple-600 hover:text-purple-800 font-bold bg-purple-50 px-5 py-2 rounded-full transition shadow-sm">
+                📚 Magical Guide
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- LEFT PANEL: Editor & Tools -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+            
+            <!-- Drawing Area -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-pink-100 flex flex-col items-center relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 text-6xl opacity-10">🦄</div>
+                
+                <div class="w-full flex justify-between items-center mb-6 relative z-10">
+                    <h2 class="text-xl font-extrabold text-gray-800 flex items-center gap-2">
+                        🎨 Draw a Cube Net
+                    </h2>
+                    <span class="text-xs font-bold bg-pink-100 text-pink-600 px-3 py-1.5 rounded-full shadow-sm">6 Squares Only!</span>
+                </div>
+                
+                <div id="grid-container" class="grid gap-1 bg-pink-50 p-4 rounded-2xl border-2 border-pink-200 mb-6 shadow-inner relative z-10"></div>
+
+                <div class="flex gap-3 w-full relative z-10">
+                    <button id="btn-build" class="flex-1 bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white font-extrabold py-4 px-4 rounded-2xl transition shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2">
+                        ✨ Build 3D Magic
+                    </button>
+                    <button id="btn-clear" class="bg-white hover:bg-red-50 text-red-500 font-bold py-4 px-5 rounded-2xl transition shadow-md border-2 border-red-100 flex items-center justify-center" title="Clear Grid">
+                        <i data-lucide="trash-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Demos / Templates -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-purple-100">
+                <h2 class="text-lg font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+                    🎁 Quick Surprises (Cube Nets)
+                </h2>
+                
+                <div class="space-y-3">
+                    <button onclick="loadTemplate('cross')" class="w-full text-left px-5 py-4 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 rounded-2xl text-emerald-700 font-bold transition flex justify-between items-center group">
+                        Cross Shape (Valid!) 🌟 <i data-lucide="check-circle" class="w-5 h-5 opacity-50 group-hover:opacity-100"></i>
+                    </button>
+                    <button onclick="loadTemplate('stairs')" class="w-full text-left px-5 py-4 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 rounded-2xl text-emerald-700 font-bold transition flex justify-between items-center group">
+                        Stairs Shape (Valid!) 🌟 <i data-lucide="check-circle" class="w-5 h-5 opacity-50 group-hover:opacity-100"></i>
+                    </button>
+                    
+                    <button onclick="loadTemplate('invalid2x2')" class="w-full text-left px-5 py-4 bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 rounded-2xl text-rose-700 font-bold transition flex justify-between items-center group mt-4">
+                        Has 2x2 Block (Fails 🙈) <i data-lucide="x-circle" class="w-5 h-5 opacity-50 group-hover:opacity-100"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Main Lab 3D View -->
+        <div class="w-full lg:w-2/3 bg-white rounded-3xl shadow-xl border-4 border-pink-200 flex flex-col relative overflow-hidden min-h-[500px] lg:min-h-full">
+            
+            <div id="status-banner" class="absolute top-6 left-6 right-6 z-10 transition-all duration-300 transform -translate-y-full opacity-0 pointer-events-none">
+                <div id="status-content" class="px-6 py-4 rounded-2xl shadow-xl font-bold flex items-center gap-4 border-4">
+                    <span id="status-emoji" class="text-3xl">🎉</span>
+                    <div>
+                        <h3 id="status-title" class="text-xl font-extrabold">Status</h3>
+                        <p id="status-message" class="text-sm font-bold opacity-90">Message details here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="canvas-container" class="flex-1 w-full bg-gradient-to-br from-indigo-50 to-pink-50 cursor-grab active:cursor-grabbing relative rounded-2xl">
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                    <div class="text-7xl mb-4 opacity-50 animate-bounce">🧊</div>
+                    <p class="text-gray-500 text-xl font-bold text-center px-4">
+                        Draw a magical net on the left <br> and let's fold it together!
+                    </p>
+                </div>
+            </div>
+            
+            <div id="fold-controls" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-[90%] max-w-lg bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-2xl border-4 border-purple-200 flex flex-col gap-4 transition-all duration-500 opacity-0 translate-y-12 pointer-events-none z-20">
+                <div class="flex justify-between items-center px-2">
+                    <span class="text-sm font-extrabold text-purple-400">Flat Net ⬜</span>
+                    <span class="text-sm font-extrabold text-pink-500">Folded Cube 🧊</span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="btn-autoplay" class="bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full w-14 h-14 flex items-center justify-center transition shadow-md focus:outline-none">
+                        <i id="play-icon" data-lucide="play" class="w-7 h-7 ml-1"></i>
+                    </button>
+                    <input type="range" id="slider-fold" min="0" max="100" value="0" class="flex-1">
+                    <div id="txt-percentage" class="text-purple-700 font-extrabold text-lg w-14 text-right">0%</div>
+                </div>
+            </div>
+            
+            <div class="absolute bottom-4 right-4 text-xs font-extrabold text-purple-500 bg-purple-100 px-4 py-2 rounded-full pointer-events-none shadow-sm flex items-center gap-2">
+                <i data-lucide="mouse" class="w-4 h-4"></i> Drag to rotate
+            </div>
+        </div>
+    </main>
+
+    <!-- INSTRUCTIONS / ENCYCLOPEDIA SECTION (Separated Demos) -->
+    <section id="guide" class="w-full max-w-7xl mx-auto px-4 mt-8">
+        <div class="flex flex-col items-center gap-3 mb-10 text-center">
+            <div class="p-4 bg-purple-100 text-purple-600 rounded-3xl shadow-sm inline-block">
+                <i data-lucide="book-open" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-800">Magical Shapes Encyclopedia</h2>
+            <p class="text-gray-500 font-bold max-w-2xl">Learn the rules for each 3D shape and play with its magical interactive model below!</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- 1. Cube -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-blue-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🧊</div>
+                        <h3 class="text-2xl font-extrabold text-blue-800">1. Cube</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">✨ <span>Must have exactly <span class="text-blue-500">6 identical squares</span>.</span></li>
+                        <li class="flex gap-2">🙈 <span>Cannot contain a <span class="text-red-400">2x2 block</span> of squares.</span></li>
+                        <li class="flex gap-2">📏 <span>Cannot have <span class="text-red-400">5 or more</span> in a straight line.</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-cube" class="w-full h-56 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-blue-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+            <!-- 2. Cuboid -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-emerald-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🧱</div>
+                        <h3 class="text-2xl font-extrabold text-emerald-800">2. Cuboid</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">✨ <span>Contains exactly <span class="text-emerald-500">6 rectangles</span>.</span></li>
+                        <li class="flex gap-2">👯‍♀️ <span>Opposite faces in 3D must be <span class="text-emerald-500">identical</span>.</span></li>
+                        <li class="flex gap-2">🛑 <span>In the net, opposite faces <span class="text-red-400">never touch</span>!</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-cuboid" class="w-full h-56 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+            <!-- 3. Prism -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-purple-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🎪</div>
+                        <h3 class="text-2xl font-extrabold text-purple-800">3. Prism</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">👯‍♀️ <span>Has <span class="text-purple-500">two identical bases</span> (e.g. triangles).</span></li>
+                        <li class="flex gap-2">📦 <span>The side faces connecting them are <span class="text-purple-500">rectangles</span>.</span></li>
+                        <li class="flex gap-2">🔢 <span>Number of rectangles = <span class="text-purple-500">sides of the base</span>.</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-prism" class="w-full h-56 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-2xl border-2 border-purple-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-purple-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+            <!-- 4. Pyramid -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-amber-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🔺</div>
+                        <h3 class="text-2xl font-extrabold text-amber-800">4. Pyramid</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">⭐ <span>Has <span class="text-amber-500">only one base</span> (square, triangle).</span></li>
+                        <li class="flex gap-2">🏕️ <span>Side faces are <span class="text-amber-500">triangles</span> meeting at the top.</span></li>
+                        <li class="flex gap-2">🌟 <span>The net usually looks like a star or flower!</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-pyramid" class="w-full h-56 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border-2 border-amber-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-amber-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+            <!-- 5. Cylinder -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-rose-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🛢️</div>
+                        <h3 class="text-2xl font-extrabold text-rose-800">5. Cylinder</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">🔘 <span>Consists of <span class="text-rose-500">two circles</span> (top & bottom).</span></li>
+                        <li class="flex gap-2">📜 <span>The curved body unfolds into <span class="text-rose-500">one rectangle</span>.</span></li>
+                        <li class="flex gap-2">📏 <span>Rectangle length = <span class="text-rose-500">circumference of circle</span>.</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-cylinder" class="w-full h-56 bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl border-2 border-rose-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-rose-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+            <!-- 6. Cone -->
+            <div class="bg-white p-6 rounded-3xl shadow-lg border-2 border-orange-100 flex flex-col h-full">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 border-b-2 border-gray-100 pb-4">
+                        <div class="text-4xl">🍦</div>
+                        <h3 class="text-2xl font-extrabold text-orange-800">6. Cone</h3>
+                    </div>
+                    <ul class="space-y-3 text-gray-600 font-bold">
+                        <li class="flex gap-2">🔘 <span>Contains <span class="text-orange-500">one circle</span> (the base).</span></li>
+                        <li class="flex gap-2">🍕 <span>Body unfolds into a <span class="text-orange-500">circular sector</span> (pizza slice).</span></li>
+                        <li class="flex gap-2">📏 <span>Arc length = circumference of the base circle.</span></li>
+                    </ul>
+                </div>
+                <!-- Mini Demo Canvas -->
+                <div id="demo-cone" class="w-full h-56 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border-2 border-orange-100 mt-6 cursor-grab relative overflow-hidden">
+                    <div class="absolute bottom-2 right-2 text-[10px] font-bold text-orange-400 uppercase tracking-widest pointer-events-none">Interactive 3D</div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-12 text-center pb-8">
+        <p class="text-gray-400 font-extrabold flex items-center justify-center gap-2">
+            Made with <i data-lucide="heart" class="text-pink-500 animate-pulse w-5 h-5 fill-current"></i> for Dima
+        </p>
+    </footer>
+
+    <!-- MAIN LOGIC -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- 1. Grid Logic (Main Lab) ---
+        const gridSize = 6;
+        let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+        const gridContainer = document.getElementById('grid-container');
+        gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, minmax(0, 1fr))`;
+
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell w-10 h-10 md:w-12 md:h-12 border-2 border-pink-100 rounded-xl cursor-pointer bg-white';
+                cell.dataset.r = r; cell.dataset.c = c;
+                cell.addEventListener('click', toggleCell);
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        function toggleCell(e) {
+            const r = parseInt(e.target.dataset.r);
+            const c = parseInt(e.target.dataset.c);
+            grid[r][c] = grid[r][c] === 1 ? 0 : 1;
+            e.target.classList.toggle('active');
+            hide3DControls();
+            hideStatus();
+        }
+
+        function clearGrid() {
+            grid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+            document.querySelectorAll('.grid-cell').forEach(cell => cell.classList.remove('active'));
+            hide3DControls();
+            reset3DView();
+            document.getElementById('empty-state').style.opacity = '1';
+        }
+        document.getElementById('btn-clear').addEventListener('click', clearGrid);
+
+        const templates = {
+            cross: [[0,1,0,0],[1,1,1,1],[0,1,0,0]],
+            stairs: [[1,1,0,0],[0,1,1,0],[0,0,1,1]],
+            invalid2x2: [[1,1,0,0],[1,1,1,0],[0,0,1,0]],
+        };
+
+        window.loadTemplate = function(name) {
+            clearGrid();
+            const tmpl = templates[name];
+            const sr = Math.floor((gridSize - tmpl.length)/2);
+            const sc = Math.floor((gridSize - tmpl[0].length)/2);
+            for(let i=0; i<tmpl.length; i++) {
+                for(let j=0; j<tmpl[i].length; j++) {
+                    if(tmpl[i][j] === 1) {
+                        grid[sr+i][sc+j] = 1;
+                        document.querySelector(`.grid-cell[data-r="${sr+i}"][data-c="${sc+j}"]`).classList.add('active');
+                    }
+                }
+            }
+            setTimeout(() => document.getElementById('btn-build').click(), 100);
+        }
+
+        // --- 2. Main Three.js Setup (Cube Builder) ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, -4, 8); 
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        let facesGroup = new THREE.Group();
+        scene.add(facesGroup);
+        
+        let activeFaces = []; 
+        let treeMaxDepth = 0;
+        
+        const sliderFold = document.getElementById('slider-fold');
+        const txtPercentage = document.getElementById('txt-percentage');
+        let isAutoPlaying = false;
+        let autoPlayDir = 1;
+        let autoPlayWait = 0;
+
+        function createFace() {
+            const group = new THREE.Group(); 
+            const geometry = new THREE.BoxGeometry(1, 1, 0.08);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xfce7f3, roughness: 0.2, metalness: 0.0, side: THREE.DoubleSide 
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 })));
+            group.add(mesh); 
+            group.userData.mesh = mesh;
+            return group;
+        }
+
+        function reset3DView() {
+            scene.remove(facesGroup);
+            facesGroup = new THREE.Group();
+            scene.add(facesGroup);
+            activeFaces = [];
+            treeMaxDepth = 0;
+            sliderFold.value = 0;
+            txtPercentage.innerText = "0%";
+            isAutoPlaying = false;
+            hideStatus();
+        }
+
+        function applyFolds(progress) {
+            if(activeFaces.length === 0 || treeMaxDepth === 0) return;
+            activeFaces.forEach(f => {
+                let d = f.userData.depth;
+                let start = (d - 1) / treeMaxDepth;
+                let end = d / treeMaxDepth;
+                let localP = Math.max(0, Math.min(1, (progress - start) / (end - start)));
+                let ease = localP < 0.5 ? 2 * localP * localP : -1 + (4 - 2 * localP) * localP;
+                f.rotation[f.userData.foldAxis] = (Math.PI / 2) * f.userData.foldDir * ease;
+            });
+            facesGroup.updateMatrixWorld(true);
+        }
+
+        function calculateOppositeColors() {
+            applyFolds(1.0);
+            facesGroup.updateMatrixWorld(true);
+            let faceMeshes = [facesGroup.children[0].userData.mesh, ...activeFaces.map(f => f.userData.mesh)];
+            let colorPairs = [0xf472b6, 0x38bdf8, 0xfbbf24]; // Pink, Blue, Yellow
+            let assignedPairs = 0;
+            let unassigned = [...faceMeshes];
+
+            while(unassigned.length >= 2 && assignedPairs < 3) {
+                let m1 = unassigned.shift();
+                let n1 = new THREE.Vector3(0,0,1).transformDirection(m1.matrixWorld).normalize();
+                let matchIdx = -1;
+                for(let i=0; i<unassigned.length; i++) {
+                    let n2 = new THREE.Vector3(0,0,1).transformDirection(unassigned[i].matrixWorld).normalize();
+                    if(n1.dot(n2) < -0.9) { matchIdx = i; break; }
+                }
+                if(matchIdx !== -1) {
+                    let m2 = unassigned.splice(matchIdx, 1)[0];
+                    let chosenColor = colorPairs[assignedPairs];
+                    m1.material.color.setHex(chosenColor);
+                    m2.material.color.setHex(chosenColor);
+                    assignedPairs++;
+                }
+            }
+            applyFolds(0.0);
+        }
+
+        sliderFold.addEventListener('input', (e) => {
+            isAutoPlaying = false; 
+            updatePlayIcon(false);
+            const val = parseInt(e.target.value);
+            txtPercentage.innerText = val + '%';
+            applyFolds(val / 100);
+        });
+
+        document.getElementById('btn-autoplay').addEventListener('click', () => {
+            isAutoPlaying = !isAutoPlaying;
+            updatePlayIcon(isAutoPlaying);
+            if(isAutoPlaying) {
+                if(parseInt(sliderFold.value) >= 100) autoPlayDir = -1;
+                else if(parseInt(sliderFold.value) <= 0) autoPlayDir = 1;
+                autoPlayWait = 0;
+            }
+        });
+
+        function updatePlayIcon(isPlaying) {
+            const iconEl = document.getElementById('play-icon');
+            if(isPlaying) {
+                iconEl.setAttribute('data-lucide', 'pause');
+            } else {
+                iconEl.setAttribute('data-lucide', 'play');
+            }
+            lucide.createIcons();
+        }
+
+        function show3DControls() {
+            document.getElementById('fold-controls').classList.remove('opacity-0', 'translate-y-12', 'pointer-events-none');
+        }
+
+        function hide3DControls() {
+            document.getElementById('fold-controls').classList.add('opacity-0', 'translate-y-12', 'pointer-events-none');
+            isAutoPlaying = false;
+            updatePlayIcon(false);
+        }
+
+        // --- 3. Build Engine & Validation ---
+        document.getElementById('btn-build').addEventListener('click', () => {
+            reset3DView();
+            document.getElementById('empty-state').style.opacity = '0';
+            let cells = [];
+            for(let r=0; r<gridSize; r++) {
+                for(let c=0; c<gridSize; c++) {
+                    if(grid[r][c] === 1) cells.push({r, c});
+                }
+            }
+            if (cells.length !== 6) {
+                showStatus('Oops!', `A cube needs exactly 6 squares! You drew ${cells.length}.`, 'error', '🥺');
+                buildFlat3DError(cells); return;
+            }
+
+            let visited = new Set(); let q = [cells[0]];
+            visited.add(`${cells[0].r},${cells[0].c}`);
+            while(q.length > 0) {
+                let curr = q.shift();
+                [[-1,0], [1,0], [0,-1], [0,1]].forEach(d => {
+                    let nr = curr.r + d[0], nc = curr.c + d[1];
+                    let key = `${nr},${nc}`;
+                    if(nr>=0 && nr<gridSize && nc>=0 && nc<gridSize && grid[nr][nc]===1 && !visited.has(key)) {
+                        visited.add(key); q.push({r: nr, c: nc});
+                    }
+                });
+            }
+            if (visited.size !== 6) {
+                showStatus('Uh oh!', 'All squares must be connected together!', 'error', '🧩');
+                buildFlat3DError(cells); return;
+            }
+
+            build3DTree(cells[0]);
+            let statusObj = detectErrors();
+            showStatus(statusObj.title, statusObj.msg, statusObj.type, statusObj.emoji);
+            
+            if (statusObj.type === 'success') {
+                calculateOppositeColors();
+                show3DControls();
+                setTimeout(() => {
+                    isAutoPlaying = true; autoPlayDir = 1; autoPlayWait = 20;
+                    updatePlayIcon(true);
+                }, 600);
+            } else {
+                show3DControls(); 
+            }
+        });
+
+        function buildFlat3DError(cells) {
+            if(cells.length === 0) return;
+            let rootR = cells[0].r, rootC = cells[0].c;
+            cells.forEach(cell => {
+                let group = createFace(); 
+                group.userData.mesh.material.color.setHex(0xf43f5e); 
+                group.position.set(cell.c - rootC, -(cell.r - rootR), 0);
+                facesGroup.add(group);
+            });
+            centerCamera();
+        }
+
+        function build3DTree(rootCell) {
+            let rootFace = createFace(); 
+            facesGroup.add(rootFace);
+            activeFaces = []; treeMaxDepth = 0;
+            let visited3D = new Set([`${rootCell.r},${rootCell.c}`]);
+
+            function attachChildren(parentFace, r, c, currentDepth) {
+                const dirs = [
+                    {dr: -1, dc: 0, type: 'up'}, {dr: 1, dc: 0, type: 'down'},
+                    {dr: 0, dc: -1, type: 'left'}, {dr: 0, dc: 1, type: 'right'}
+                ];
+                for(let d of dirs) {
+                    let nr = r + d.dr, nc = c + d.dc;
+                    let key = `${nr},${nc}`;
+                    if (nr>=0 && nr<gridSize && nc>=0 && nc<gridSize && grid[nr][nc]===1 && !visited3D.has(key)) {
+                        visited3D.add(key);
+                        let nextDepth = currentDepth + 1;
+                        treeMaxDepth = Math.max(treeMaxDepth, nextDepth);
+                        let childFace = createFace();
+                        if (d.type === 'right') { 
+                            childFace.position.set(0.5, 0, 0); childFace.userData.mesh.position.set(0.5, 0, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'y', foldDir: 1, depth: nextDepth };
+                        } else if (d.type === 'left') { 
+                            childFace.position.set(-0.5, 0, 0); childFace.userData.mesh.position.set(-0.5, 0, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'y', foldDir: -1, depth: nextDepth };
+                        } else if (d.type === 'up') { 
+                            childFace.position.set(0, 0.5, 0); childFace.userData.mesh.position.set(0, 0.5, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'x', foldDir: -1, depth: nextDepth };
+                        } else if (d.type === 'down') { 
+                            childFace.position.set(0, -0.5, 0); childFace.userData.mesh.position.set(0, -0.5, 0);
+                            childFace.userData = { ...childFace.userData, foldAxis: 'x', foldDir: 1, depth: nextDepth };
+                        }
+                        parentFace.userData.mesh.add(childFace); 
+                        activeFaces.push(childFace);
+                        attachChildren(childFace, nr, nc, nextDepth);
+                    }
+                }
+            }
+            attachChildren(rootFace, rootCell.r, rootCell.c, 0);
+            centerCamera();
+        }
+
+        function centerCamera() {
+            camera.position.set(0, -2, 8);
+            camera.lookAt(0,0,0);
+            controls.target.set(0,0,0);
+        }
+
+        function detectErrors() {
+            for (let r=0; r<gridSize-1; r++) {
+                for (let c=0; c<gridSize-1; c++) {
+                    if (grid[r][c]+grid[r+1][c]+grid[r][c+1]+grid[r+1][c+1] === 4) return {title: 'Oh no!', msg: 'Found a 2x2 block. Faces will overlap. Drag slider to see!', type: 'error', emoji: '💥'};
+                }
+            }
+            for (let i=0; i<gridSize; i++) {
+                let rSum = 0, cSum = 0;
+                for (let j=0; j<gridSize; j++) { rSum+=grid[i][j]; cSum+=grid[j][i]; }
+                if(rSum>4 || cSum>4) return {title: 'Too long!', msg: 'Cannot have 5+ squares in a line. Drag slider to see!', type: 'error', emoji: '📏'};
+            }
+            applyFolds(1.0); 
+            let positions = [];
+            facesGroup.children[0].userData.mesh.getWorldPosition(new THREE.Vector3());
+            positions.push(facesGroup.children[0].userData.mesh.getWorldPosition(new THREE.Vector3()));
+            activeFaces.forEach(f => positions.push(f.userData.mesh.getWorldPosition(new THREE.Vector3())));
+            applyFolds(0.0); 
+            for(let i=0; i<positions.length; i++) {
+                for(let j=i+1; j<positions.length; j++) {
+                    if (positions[i].distanceTo(positions[j]) < 0.1) return {title: 'Collision!', msg: 'Faces are crashing into each other when folded!', type: 'error', emoji: '🙈'};
+                }
+            }
+            return {title: 'Perfect Magic!', msg: 'Look! Opposite sides have the same color. Watch it fold!', type: 'success', emoji: '✨'};
+        }
+
+        function showStatus(title, msg, type, emoji) {
+            const banner = document.getElementById('status-banner');
+            const content = document.getElementById('status-content');
+            document.getElementById('status-title').innerText = title;
+            document.getElementById('status-message').innerText = msg;
+            document.getElementById('status-emoji').innerText = emoji;
+            if(type === 'error') content.className = 'px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 border-4 bg-rose-50 border-rose-200 text-rose-800';
+            else content.className = 'px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 border-4 bg-emerald-50 border-emerald-200 text-emerald-800';
+            banner.classList.remove('-translate-y-full', 'opacity-0', 'pointer-events-none');
+        }
+
+        function hideStatus() {
+            document.getElementById('status-banner').classList.add('-translate-y-full', 'opacity-0', 'pointer-events-none');
+        }
+
+
+        // --- 4. MINI DEMOS FOR ENCYCLOPEDIA CARDS ---
+        const miniDemos = [];
+
+        function initMiniDemo(containerId, geometry, color, yOffset = 0) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 2, 6);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = false; // Keep it clean for the mini cards
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color, roughness: 0.2, metalness: 0.1, 
+                polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geometry), 
+                new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 })
+            );
+            mesh.add(edges);
+            mesh.position.y = yOffset;
+            
+            scene.add(mesh);
+            miniDemos.push({ scene, camera, renderer, controls, mesh, container });
+        }
+
+        // Initialize all the mini-demos once the window loads
+        window.addEventListener('load', () => {
+            // 1. Cube
+            initMiniDemo('demo-cube', new THREE.BoxGeometry(1.8, 1.8, 1.8), 0x3b82f6);
+            // 2. Cuboid
+            initMiniDemo('demo-cuboid', new THREE.BoxGeometry(2.5, 1.2, 1.5), 0x10b981);
+            // 3. Prism
+            initMiniDemo('demo-prism', new THREE.CylinderGeometry(1.2, 1.2, 2.5, 3), 0xa855f7);
+            // 4. Pyramid
+            initMiniDemo('demo-pyramid', new THREE.ConeGeometry(1.5, 2, 4), 0xf59e0b, -0.5);
+            // 5. Cylinder
+            initMiniDemo('demo-cylinder', new THREE.CylinderGeometry(1.2, 1.2, 2.5, 32), 0xf43f5e);
+            // 6. Cone
+            initMiniDemo('demo-cone', new THREE.ConeGeometry(1.5, 2.5, 32), 0xf97316, -0.5);
+            
+            // Start the massive animation loop
+            animate();
+        });
+
+        // Window resize handler for main + all mini canvases
+        window.addEventListener('resize', () => {
+            miniDemos.forEach(demo => {
+                if(demo.container.clientWidth === 0) return;
+                demo.camera.aspect = demo.container.clientWidth / demo.container.clientHeight;
+                demo.camera.updateProjectionMatrix();
+                demo.renderer.setSize(demo.container.clientWidth, demo.container.clientHeight);
+            });
+        });
+
+
+        // --- Render Loop (Handles Main Canvas + All Mini Canvases) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Main Canvas Updates
+            controls.update();
+            if (isAutoPlaying) {
+                if (autoPlayWait > 0) {
+                    autoPlayWait--;
+                } else {
+                    let val = parseFloat(sliderFold.value);
+                    val += 1.2 * autoPlayDir; 
+                    if (val >= 100) { val = 100; autoPlayDir = -1; autoPlayWait = 60; }
+                    if (val <= 0) { val = 0; autoPlayDir = 1; autoPlayWait = 60; }
+                    sliderFold.value = val;
+                    txtPercentage.innerText = Math.round(val) + '%';
+                    applyFolds(val / 100);
+                }
+            }
+            renderer.render(scene, camera);
+
+            // Mini Demos Updates (Constant spinning)
+            miniDemos.forEach(demo => {
+                demo.controls.update();
+                demo.mesh.rotation.y += 0.005;
+                demo.mesh.rotation.x += 0.002;
+                demo.renderer.render(demo.scene, demo.camera);
+            });
+        }
+        
+    </script>
+</body>
+</html>
